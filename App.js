@@ -1,53 +1,369 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, FlatList } from 'react-native';
+import { StyleSheet, Text, View, FlatList, TextInput, Button, TouchableOpacity, ScrollView, Modal } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import React from 'react';
+import { useState, useEffect } from 'react';
+import { v4 as uuidv4 } from 'uuid';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function App() {
-  const assassin = [
-    { name: 'Leonard', id: '0' },
-    { name: 'Aziz', id: '1' },
-    { name: 'Daniswara', id: '2' },
-    { name: 'Andhika', id: '3' },
-    { name: 'Yahya', id: '4' },
-    { name: 'Rayhan', id: '5' },
-    { name: 'Wahyu', id: '6' },
-    { name: 'Wildan', id: '7' },
-  ];
-  const target = [
-    { name: 'Sarah', id: '0' },
-    { name: 'David', id: '1' },
-    { name: 'Amanda', id: '2' },
-    { name: 'Michael', id: '3' },
-    { name: 'Eva', id: '4' },
-    { name: 'Alex', id: '5' },
-    { name: 'Sophia', id: '6' },
-  ];
-  const targetArray = target.map((item) => item.name);
+  const [popupVisible, setPopupVisible] = useState(false);
+
+  const [date, setDate] = useState(new Date());
+  const [newDate, setNewDate] = useState(new Date());
+  const [mode, setMode] = useState('time');
+  const [show, setShow] = useState(false);
+  const [timePickerVisible, setTimePickerVisible] = useState(false);
+  const [editingTodoKey, setEditingTodoKey] = useState(null);
+  const [editingTimeKey, setEditingTimeKey] = useState(null);
+  const onChange = (event, selectedDate) => {
+    const currentDate = selectedDate;
+    setShow(false);
+    setDate(currentDate);
+  }
+  const onChangeEdit = (event, selectedDate) => {
+    const currentDate = selectedDate;
+    setTimePickerVisible(false);
+    setDate(currentDate);
+  }
+  const showMode = (currentMode) => {
+    setShow(true);
+    setMode(currentMode);
+  }
+  const showTimePicker = () => {
+    showMode('time');
+  }
+  const togglePopup = () => {
+    setPopupVisible(!popupVisible)
+  };
+  const [todos, setToDos] = useState([
+    { text: '(This is just an example, you can delete this and start create your own)', key: uuidv4(), time : ''},
+  ]);
+  const [index, setIndex] = useState(1);
+  const [newToDo, setNewToDo] = useState('');
+  let updatedToDos = todos.map((todo, idx) => ({
+    ...todo,
+    index: idx + 1,
+  }));
+  const time = new Date(date);
+  const formattedDate = `${time.toLocaleTimeString().replace(/:\d{2}\s/, ' ')}`;
+  const addTodo = () => {
+    const todo = { text: newToDo, key: uuidv4(), index: index, time : formattedDate}
+    setToDos([...todos, todo]);
+    setNewToDo('');
+    togglePopup();
+    setDate('');
+  };
+  const removeToDo = async (keyRemoveItem) => {
+    try {
+      const storedToDos = await AsyncStorage.getItem('todos');
+      if (storedToDos !== null) {
+        const currentToDos = JSON.parse(storedToDos);
+        const updatedToDos = currentToDos.filter((todo) => todo.key !== keyRemoveItem);
+        await AsyncStorage.setItem('todos', JSON.stringify(updatedToDos));
+        setToDos(updatedToDos);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+  const editToDo = (key) => {
+    setEditingTodoKey(key);
+    let editedToDo = todos.find((todo) => todo.key === key);
+    setNewToDo(editedToDo.text)
+  };
+  const visibleMode = (currentMode) => {
+    setTimePickerVisible(true);
+    setMode(currentMode);
+  }
+  const appearTimePicker = () => {
+    visibleMode('time');
+  }
+  const editTime = (key) => {
+    setEditingTimeKey(key);
+    appearTimePicker();
+    const EditedTime = todos.find(
+      (todo) => todo.key === key
+    );
+    setDate(EditedTime.time);
+  }
+  const saveEditedTodo = async (key) => {
+    const updatedToDos = todos.map(
+      (todo) => todo.key === key  ? {
+        ...todo,
+        text: newToDo,
+        time: formattedDate
+      } : todo
+    );
+    setToDos(updatedToDos);
+    setEditingTodoKey(null);
+    setTimePickerVisible(false);
+    setEditingTimeKey(null);
+    try {
+      await AsyncStorage.setItem('todos', JSON.stringify(updatedToDos));
+      setNewToDo('');
+    }
+    catch (error) {
+      console.error('Error' + error);
+    }
+  }
+  const saveEditedTime = (key) => {
+    const updatedTime = todos.map(
+      (todo) => todo.key === key ? {
+        ...todo,
+        time: formattedDate
+      } : todo
+    );
+  }
+  useEffect(() => {
+    const loadTodos = async () => {
+      try {
+        const storedTodos = await AsyncStorage.getItem('todos');
+        if (storedTodos !== null) {
+          setToDos(JSON.parse(storedTodos));
+        }
+      } catch (error) {
+        console.error('Error loading todos from AsyncStorage:', error);
+      }
+    };
+    loadTodos();
+  }, []);
+  useEffect(() => {
+    const saveTodos = async () => {
+      try {
+        await AsyncStorage.setItem('todos', JSON.stringify(todos));
+      } catch (error) {
+        console.error('Error saving todos to AsyncStorage:', error);
+      }
+    };
+    saveTodos();
+  }, [todos]);
   return (
     <View style={styles.container}>
-      <FlatList
-        data={assassin}
-        numColumns={1}
-        keyExtractor={(item) => [item.id]}
-        renderItem={({item, index}) => (
-          <View style={styles.list}>
-            <Text>{item.name} will assassinate {targetArray[index] ? targetArray[index] : 'no one'}</Text>
+      <View style={styles.header}>
+        <Text style={styles.headerText}>To-Do-List</Text>
+      </View>
+      {todos.length === 0 && <Text style={[styles.visible, styles.nullCheckerText]}>Nothing here...</Text>}
+      <View style={styles.content}>
+        <FlatList
+          data={updatedToDos}
+          renderItem={
+            ({ item }) => (
+              <View style={styles.lists}>
+                <View style={styles.index}>
+                  <Text style={styles.indexkey}>{item.index}</Text>
+                </View>
+                <View style={styles.text}>
+                  {editingTodoKey === item.key ? (
+                    <View>
+                      <TextInput
+                        value={newToDo}
+                        onChangeText={(text) => setNewToDo(text)}
+                        style={styles.editText}
+                      />
+                      <Text>{item.time}</Text>
+                    </View>
+                  ) : (
+                    <View>
+                      <Text>{item.text}</Text>
+                      <Text>{item.time}</Text>
+                    </View>
+                  )}
+                </View>
+                <View>
+                  <TouchableOpacity onPress={() => removeToDo(item.key)} style={styles.delete}>
+                    <Text style={styles.deleteText}>Delete</Text>
+                  </TouchableOpacity>
+                  {editingTodoKey !== item.key ?
+                    <TouchableOpacity onPress={() => editToDo(item.key)} style={styles.edit}>
+                      <Text style={styles.deleteText}>Edit</Text>
+                    </TouchableOpacity> : ''}
+                  {editingTodoKey === item.key ? (
+                    <View>
+                      <TouchableOpacity onPress={() => {editTime(item.key)}} style={styles.edit}>
+                        <Text style={styles.deleteText}>Edit time</Text>
+                        {
+                        timePickerVisible && (
+                          <DateTimePicker
+                          testID="dateTimePicker"
+                          value={new Date()}
+                          onBlur={saveEditedTime}
+                          mode={mode}
+                          is24Hour={true}
+                          onChange={onChangeEdit}
+                        />
+                        )
+                      }
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => saveEditedTodo(item.key)} style={styles.edit}>
+                        <Text style={styles.deleteText}>Save</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : ''}
+                </View>
+              </View>
+            )
+          }
+        />
+        <View style={styles.addToDo}>
+          <Button title='add' onPress={togglePopup} />
+        </View>
+        <Modal visible={popupVisible} animationType='slide' style={styles.popup} onRequestClose={() => setPopupVisible(false)}>
+          <TextInput placeholder='add To-Do' style={styles.input}
+            onChangeText={(text) => setNewToDo(text)} multiline />
+          <Text style={styles.date}>
+            Message : 
+            {` ${  "\n" + newToDo + "\n" + formattedDate}`}
+          </Text>
+          <View style={styles.buttons}>
+            <View style={styles.addTime}>
+              <Button title='Add time' onPress={showTimePicker} />
+              {
+                show && (
+                  <DateTimePicker
+                    testID="dateTimePicker"
+                    value={new Date()}
+                    mode={mode}
+                    is24Hour={true}
+                    key={uuidv4()}
+                    onChange={onChange}
+                  />
+                )
+              }
+            </View>
+            <View style={styles.addButton}>
+              <Button title='Add To-Do' onPress={newToDo ? addTodo : () => { }} style={styles.button}/>
+            </View>
           </View>
-        )}
-      />
+        </Modal>
+      </View>
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignContent: 'center',
+    flexDirection: 'column',
+    flex: 2,
   },
-  list : {
-    display : 'flex',
-    flex : '2',
-    flexDirection : 'row', 
-  }
+  header: {
+    alignItems: 'center',
+    backgroundColor: '#00ffff',
+    color: 'white',
+    height: 100,
+    paddingTop: 50,
+    marginBottom: 100,
+  },
+  headerText: {
+    fontSize: 20,
+  },
+  lists: {
+    display: 'flex',
+    flexDirection: 'row',
+    flex: 3,
+    justifyContent: 'space-around',
+    width: 250,
+    marginBottom: 20,
+  },
+  index: {
+    backgroundColor: '#00ffff',
+    width: 30,
+    height: 30,
+    borderRadius: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  text: {
+    width: 150,
+    height: 100,
+    backgroundColor: '#00ffff',
+    borderRadius: 10,
+    paddingTop: 10,
+    paddingLeft: 15,
+  },
+  delete: {
+    height: 40,
+    width: 40,
+    backgroundColor: 'red',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 10,
+  },
+  edit: {
+    height: 40,
+    width: 40,
+    backgroundColor: 'yellow',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 10,
+    marginTop: 10,
+  },
+  addToDo: {
+    width: 100,
+    marginHorizontal: 150,
+  },
+  deleteText: {
+    fontSize: 10,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: 'black',
+    marginTop: 50,
+    width: 300,
+    height: 50,
+    marginLeft: 50,
+    borderRadius: 10,
+    paddingLeft: 10,
+  },
+  addButton: {
+    height: 70,
+    width: 100,
+  },
+  close: {
+    width: 70,
+    height: 100,
+    marginHorizontal: 170,
+  },
+  addTime: {
+    marginBottom: 300,
+    width: 100,
+    alignItems: 'center',
+    flex: 2,
+  },
+  buttons: {
+    display: 'flex',
+    flexDirection: 'row',
+    marginHorizontal: 100,
+  },
+  date: {
+    fontWeight: 'bold',
+    fontSize: 20,
+    marginLeft: 50,
+    marginBottom: 25,
+  },
+  visible: {
+    color: 'black',
+  },
+  invisible: {
+    color: 'transparent',
+  },
+  nullCheckerText: {
+    textAlign: 'center',
+    color: 'grey',
+    fontSize: 20,
+    marginBottom: 50,
+  },
+  button : {
+    backgroundColor : '#00ffff',
+  },
+  editText : {
+    borderColor : 'black',
+    borderWidth : 1,
+    height : 50,
+    marginRight : 10,
+    borderRadius : 5,
+    paddingLeft : 10,
+  },
 });

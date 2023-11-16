@@ -356,7 +356,7 @@ const styles = StyleSheet.create({
     marginBottom: 50,
   },
   button : {
-    backgroundColor : '#00ffff',
+    color : '#00ffff',
   },
   editText : {
     borderColor : 'black',

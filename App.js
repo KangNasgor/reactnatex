@@ -37,7 +37,7 @@ export default function App() {
     setPopupVisible(!popupVisible)
   };
   const [todos, setToDos] = useState([
-    { text: '(This is just an example, you can delete this and start create your own)', key: uuidv4(), time : ''},
+    { text: '(This is just an example, you can delete this and start create your own)', key: uuidv4(), time: '' },
   ]);
   const [index, setIndex] = useState(1);
   const [newToDo, setNewToDo] = useState('');
@@ -46,9 +46,11 @@ export default function App() {
     index: idx + 1,
   }));
   const time = new Date(date);
+  const newTime = new Date(newDate);
   const formattedDate = `${time.toLocaleTimeString().replace(/:\d{2}\s/, ' ')}`;
+  const formattedNewDate = `${newTime.toLocaleTimeString().replace(/:\d{2}\s/, ' ')}`;
   const addTodo = () => {
-    const todo = { text: newToDo, key: uuidv4(), index: index, time : formattedDate}
+    const todo = { text: newToDo, key: uuidv4(), index: index, time: formattedDate !== 'Invalid Date' ? formattedDate : '' }
     setToDos([...todos, todo]);
     setNewToDo('');
     togglePopup();
@@ -89,12 +91,14 @@ export default function App() {
   }
   const saveEditedTodo = async (key) => {
     const updatedToDos = todos.map(
-      (todo) => todo.key === key  ? {
+      (todo) => todo.key === key ? {
         ...todo,
         text: newToDo,
-        time: formattedDate
+        time: formattedDate !== '' && formattedDate !== 'Invalid Date' ? formattedDate : todo.time
       } : todo
     );
+    console.log('formattedDate:', formattedDate);
+    console.log('todo.time:', todos.find((todo) => todo.key === key).time);
     setToDos(updatedToDos);
     setEditingTodoKey(null);
     setTimePickerVisible(false);
@@ -139,13 +143,15 @@ export default function App() {
     saveTodos();
   }, [todos]);
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerText}>To-Do-List</Text>
       </View>
       {todos.length === 0 && <Text style={[styles.visible, styles.nullCheckerText]}>Nothing here...</Text>}
       <View style={styles.content}>
         <FlatList
+          scrollEnabled={false}
+          nestedScrollEnabled
           data={updatedToDos}
           renderItem={
             ({ item }) => (
@@ -180,20 +186,20 @@ export default function App() {
                     </TouchableOpacity> : ''}
                   {editingTodoKey === item.key ? (
                     <View>
-                      <TouchableOpacity onPress={() => {editTime(item.key)}} style={styles.edit}>
+                      <TouchableOpacity onPress={() => { editTime(item.key) }} style={styles.edit}>
                         <Text style={styles.deleteText}>Edit time</Text>
                         {
-                        timePickerVisible && (
-                          <DateTimePicker
-                          testID="dateTimePicker"
-                          value={new Date()}
-                          onBlur={saveEditedTime}
-                          mode={mode}
-                          is24Hour={true}
-                          onChange={onChangeEdit}
-                        />
-                        )
-                      }
+                          timePickerVisible && (
+                            <DateTimePicker
+                              testID="dateTimePicker"
+                              value={new Date()}
+                              onBlur={saveEditedTime}
+                              mode={mode}
+                              is24Hour={true}
+                              onChange={onChangeEdit}
+                            />
+                          )
+                        }
                       </TouchableOpacity>
                       <TouchableOpacity onPress={() => saveEditedTodo(item.key)} style={styles.edit}>
                         <Text style={styles.deleteText}>Save</Text>
@@ -212,8 +218,8 @@ export default function App() {
           <TextInput placeholder='add To-Do' style={styles.input}
             onChangeText={(text) => setNewToDo(text)} multiline />
           <Text style={styles.date}>
-            Message : 
-            {` ${  "\n" + newToDo + "\n" + formattedDate}`}
+            Message :
+            {` ${"\n" + newToDo + "\n" + formattedDate}`}
           </Text>
           <View style={styles.buttons}>
             <View style={styles.addTime}>
@@ -222,7 +228,7 @@ export default function App() {
                 show && (
                   <DateTimePicker
                     testID="dateTimePicker"
-                    value={new Date()}
+                    value={date || new Date()}
                     mode={mode}
                     is24Hour={true}
                     key={uuidv4()}
@@ -232,12 +238,12 @@ export default function App() {
               }
             </View>
             <View style={styles.addButton}>
-              <Button title='Add To-Do' onPress={newToDo ? addTodo : () => { }} style={styles.button}/>
+              <Button title='Add To-Do' onPress={newToDo ? addTodo : () => { }} style={styles.button} />
             </View>
           </View>
         </Modal>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 const styles = StyleSheet.create({
@@ -355,15 +361,15 @@ const styles = StyleSheet.create({
     fontSize: 20,
     marginBottom: 50,
   },
-  button : {
-    color : '#00ffff',
+  button: {
+    color: '#00ffff',
   },
-  editText : {
-    borderColor : 'black',
-    borderWidth : 1,
-    height : 50,
-    marginRight : 10,
-    borderRadius : 5,
-    paddingLeft : 10,
+  editText: {
+    borderColor: 'black',
+    borderWidth: 1,
+    height: 50,
+    marginRight: 10,
+    borderRadius: 5,
+    paddingLeft: 10,
   },
 });

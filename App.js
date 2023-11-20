@@ -215,8 +215,9 @@ export default function App() {
           <Button title='add' onPress={togglePopup} />
         </View>
         <Modal visible={popupVisible} animationType='slide' style={styles.popup} onRequestClose={() => setPopupVisible(false)}>
-          <TextInput placeholder='add To-Do' style={styles.input}
-            onChangeText={(text) => setNewToDo(text)} multiline />
+          
+          <View style={styles.inputParent}><TextInput placeholder='add To-Do' style={styles.input}
+            onChangeText={(text) => setNewToDo(text)} multiline /></View>
           <Text style={styles.date}>
             Message :
             {` ${"\n" + newToDo + "\n" + formattedDate}`}
@@ -307,11 +308,17 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   addToDo: {
-    width: 100,
-    marginHorizontal: 150,
+    alignItems : 'center',
+    justifyContent : 'center',
+    display : 'flex',
   },
   deleteText: {
     fontSize: 10,
+  },
+  inputParent : {
+    alignItems : 'center',
+    justifyContent : 'center',
+    display : 'flex',
   },
   input: {
     borderWidth: 1,
@@ -319,7 +326,6 @@ const styles = StyleSheet.create({
     marginTop: 50,
     width: 300,
     height: 50,
-    marginLeft: 50,
     borderRadius: 10,
     paddingLeft: 10,
   },
@@ -336,12 +342,11 @@ const styles = StyleSheet.create({
     marginBottom: 300,
     width: 100,
     alignItems: 'center',
-    flex: 2,
   },
   buttons: {
     display: 'flex',
     flexDirection: 'row',
-    marginHorizontal: 100,
+    justifyContent: 'space-evenly',
   },
   date: {
     fontWeight: 'bold',
